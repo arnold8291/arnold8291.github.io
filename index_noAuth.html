@@ -20,25 +20,54 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
+  // 인증 확인 전까지 페이지 숨김
   document.documentElement.style.visibility = 'hidden';
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.replace('https://since2027.com/');
-      return;
-    }
+  function showPage() {
+    document.documentElement.style.visibility = 'visible';
+  }
+
+  function redirectToLogin() {
+    window.location.replace('https://since2027.com/');
+  }
+
+  (async () => {
+    // 1. 플래그 확인
+    let authRequired = true;
     try {
-      const snap = await getDoc(doc(db, 'allowedUsers', user.email));
-      if (snap.exists()) {
-        document.documentElement.style.visibility = 'visible';
-      } else {
-        await signOut(auth);
-        window.location.replace('https://since2027.com/');
+      const cfgSnap = await getDoc(doc(db, 'config', 'access'));
+      if (cfgSnap.exists()) {
+        authRequired = cfgSnap.data().authRequired !== false;
       }
     } catch (e) {
-      window.location.replace('https://since2027.com/');
+      authRequired = true; // 에러 시 안전하게 로그인 요구
     }
-  });
+
+    // 2. 로그인 OFF 모드 → 바로 페이지 표시
+    if (!authRequired) {
+      showPage();
+      return;
+    }
+
+    // 3. 로그인 ON 모드 → 인증 확인
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        redirectToLogin();
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'allowedUsers', user.email));
+        if (snap.exists()) {
+          showPage();
+        } else {
+          await signOut(auth);
+          redirectToLogin();
+        }
+      } catch (e) {
+        redirectToLogin();
+      }
+    });
+  })();
 </script>
 <!-- /Firebase 인증 체크 -->
 
