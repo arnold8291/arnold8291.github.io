@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 — 한약학 스터디 허브</title>
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23d4a955'/><stop offset='1' stop-color='%23b8913a'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><g fill='none' stroke='%23fffaf0' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M32 14c-8 6-12 14-12 22 0 8 5 14 12 14s12-6 12-14c0-8-4-16-12-22z'/><path d='M32 18v32'/><path d='M32 26c-3-1-5-3-7-5'/><path d='M32 26c3-1 5-3 7-5'/><path d='M32 34c-4-1-7-3-9-5'/><path d='M32 34c4-1 7-3 9-5'/><path d='M32 42c-3-1-5-2-7-4'/><path d='M32 42c3-1 5-2 7-4'/></g></svg>">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f8f7f5;
+    --surface-2: #f3f1ed;
+    --border: #e5e2db;
+    --border-strong: #d4d0c7;
+    --accent: #b8913a;
+    --accent-dim: #c8a96e;
+    --accent-light: rgba(184,145,58,0.1);
+    --text: #1a1916;
+    --text-muted: #8a857a;
+    --text-soft: #6a665d;
+    --green: #3a8a52;
+    --red: #c0392b;
+    --blue: #3a72a0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif KR', serif;
+    min-height: 100vh;
+    padding: 30px 20px 80px;
+  }
+
+  .container { max-width: 980px; margin: 0 auto; }
+
+  /* ── 인증 게이트 ── */
+  #auth-gate {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); z-index: 100;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); letter-spacing: 0.1em;
+    flex-direction: column; gap: 16px;
+  }
+  #auth-gate.deny { color: var(--red); }
+  #auth-gate a {
+    color: var(--accent); text-decoration: none;
+    border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px;
+    font-size: 11px; transition: border-color 0.2s;
+  }
+  #auth-gate a:hover { border-color: var(--accent-dim); }
+  #auth-gate.deny .gate-msg { font-size: 13px; }
+  #auth-gate:not(.deny) a { display: none; }
+
+  #app { display: none; }
+  #app.visible { display: block; }
+
+  /* ── 헤더 ── */
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border);
+  }
+  .top-bar .left { display: flex; align-items: center; gap: 14px; }
+  .top-bar .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #d4a955, #b8913a);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 13px;
+    font-family: 'DM Mono', monospace;
+  }
+  .top-bar h1 {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .top-bar .sub {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--text-muted); letter-spacing: 0.18em;
+    text-transform: uppercase; margin-top: 2px;
+  }
+  .top-bar .right { display: flex; align-items: center; gap: 10px; }
+  .top-bar .email {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted);
+  }
+  .btn-link {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; cursor: pointer; color: var(--text);
+    text-decoration: none; transition: border-color 0.2s, background 0.2s;
+  }
+  .btn-link:hover { border-color: var(--accent-dim); background: var(--accent-light); }
+
+  /* ── 탭 ── */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: none; border: none; padding: 12px 18px;
+    cursor: pointer; font-family: 'Noto Serif KR', serif;
+    font-size: 13px; font-weight: 600; color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; animation: fadeIn 0.25s ease both; }
+  .tab-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .dot {
+    width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+  }
+  .card-desc {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); margin-bottom: 14px; line-height: 1.6;
+  }
+
+  /* ── 폼 요소 ── */
+  .form-row {
+    display: flex; gap: 8px; align-items: center;
+    flex-wrap: wrap; margin-bottom: 8px;
+  }
+  input[type="email"], input[type="text"], select {
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 12px; background: #fff;
+    color: var(--text); min-width: 0;
+  }
+  input[type="email"], input[type="text"] { flex: 1; min-width: 200px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  select { cursor: pointer; }
+
+  .btn {
+    padding: 9px 16px; border: 1px solid var(--border); border-radius: 8px;
+    background: #fff; cursor: pointer; font-family: 'Noto Serif KR', serif;
+    font-size: 12px; font-weight: 600; color: var(--text);
+    transition: all 0.18s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent-dim); background: var(--accent-light); }
+  .btn-primary {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #a07c30; border-color: #a07c30; color: #fff; }
+  .btn-danger { color: var(--red); }
+  .btn-danger:hover { border-color: var(--red); background: #fef2f2; color: var(--red); }
+  .btn-sm { padding: 6px 10px; font-size: 11px; }
+
+  /* ── 사용자 테이블 ── */
+  .user-table { width: 100%; border-collapse: collapse; }
+  .user-table th, .user-table td {
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .user-table th {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 500;
+  }
+  .user-table td { font-family: 'DM Mono', monospace; }
+  .user-table td.name { font-family: 'Noto Serif KR', serif; }
+  .user-table tr:last-child td { border-bottom: none; }
+  .user-table tr:hover td { background: var(--surface-2); }
+  .role-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.05em;
+  }
+  .role-admin { background: #fef3c7; color: #92400e; }
+  .role-grade1, .role-grade2, .role-grade3, .role-grade4 {
+    background: #dbeafe; color: #1e40af;
+  }
+  .role-alumni { background: #e0e7ff; color: #3730a3; }
+
+  /* ── 페이지 그룹 ── */
+  .page-group {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .page-group-header {
+    padding: 12px 16px; background: var(--surface-2);
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background 0.18s;
+  }
+  .page-group-header:hover { background: #ebe8e2; }
+  .page-group.open .page-group-header { border-bottom-color: var(--border); }
+  .page-group-title {
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .page-group-title .arrow { transition: transform 0.25s; font-size: 10px; color: var(--text-muted); }
+  .page-group.open .page-group-title .arrow { transform: rotate(90deg); }
+  .page-group-count {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--text-muted); letter-spacing: 0.1em;
+  }
+  .page-group-body { display: none; padding: 4px 0; }
+  .page-group.open .page-group-body { display: block; }
+
+  .page-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 14px; align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--surface);
+  }
+  .page-row:last-child { border-bottom: none; }
+  .page-row:hover { background: var(--surface); }
+  .page-row.selected { background: var(--accent-light); }
+  .page-row.selected:hover { background: rgba(184,145,58,0.15); }
+  .page-checkbox {
+    width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent);
+  }
+  .page-info { min-width: 0; }
+  .page-name { font-size: 13px; font-weight: 600; }
+  .page-id {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--text-muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .page-roles { display: flex; gap: 6px; flex-wrap: wrap; }
+  .role-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border: 1px solid var(--border);
+    border-radius: 14px; font-size: 11px; cursor: pointer;
+    background: #fff; user-select: none;
+    transition: all 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+  .role-chip:hover { border-color: var(--accent-dim); }
+  .role-chip.active {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+  .role-chip.active:hover { background: #a07c30; }
+
+  /* ── 일괄 설정 ── */
+  .bulk-controls {
+    display: grid; gap: 12px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .bulk-controls { grid-template-columns: 1fr 1fr; }
+  }
+  .bulk-section { padding: 14px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+  .bulk-label {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+  .role-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ── 토스트 ── */
+  #toast-container {
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 1000; pointer-events: none;
+  }
+  .toast {
+    background: #1a1916; color: #fff;
+    padding: 10px 16px; border-radius: 8px;
+    font-size: 12px; font-family: 'DM Mono', monospace;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    animation: slideIn 0.25s ease both;
+    pointer-events: auto;
+  }
+  .toast.error { background: var(--red); }
+  .toast.success { background: var(--green); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .empty {
+    text-align: center; padding: 40px 20px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); letter-spacing: 0.1em;
+  }
+
+  /* ── 모달 ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: none; align-items: center; justify-content: center;
+    z-index: 500; padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 24px;
+    max-width: 420px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .modal p { font-size: 13px; color: var(--text-soft); line-height: 1.6; margin-bottom: 20px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0;
+  }
+  .toggle-row + .toggle-row { border-top: 1px solid var(--border); }
+  .toggle-info { flex: 1; }
+  .toggle-info .label { font-size: 13px; font-weight: 600; }
+  .toggle-info .desc { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 3px; letter-spacing: 0.05em; }
+
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; border-radius: 24px; transition: 0.25s;
+  }
+  .switch-slider::before {
+    content: ''; position: absolute;
+    height: 18px; width: 18px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: 0.25s;
+  }
+  .switch input:checked + .switch-slider { background: var(--accent); }
+  .switch input:checked + .switch-slider::before { transform: translateX(20px); }
+</style>
+</head>
+<body>
+
+<!-- 인증 게이트 -->
+<div id="auth-gate">
+  <div class="gate-msg">권한 확인 중</div>
+  <a href="/">메인으로</a>
+</div>
+
+<!-- 토스트 -->
+<div id="toast-container"></div>
+
+<!-- 모달: 삭제 확인 -->
+<div class="modal-backdrop" id="confirm-modal">
+  <div class="modal">
+    <h3 id="confirm-title">확인</h3>
+    <p id="confirm-message">정말 진행하시겠습니까?</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-danger" id="confirm-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="app">
+  <div class="container">
+
+    <!-- 헤더 -->
+    <div class="top-bar">
+      <div class="left">
+        <div class="logo">A</div>
+        <div>
+          <h1>관리자</h1>
+          <div class="sub">since2027 admin</div>
+        </div>
+      </div>
+      <div class="right">
+        <span class="email" id="admin-email"></span>
+        <a class="btn-link" href="/">사이트로</a>
+        <button class="btn-link" onclick="signOut()">로그아웃</button>
+      </div>
+    </div>
+
+    <!-- 탭 -->
+    <div class="tabs">
+      <button class="tab active" data-tab="users">사용자 관리</button>
+      <button class="tab" data-tab="pages">페이지 권한</button>
+      <button class="tab" data-tab="bulk">일괄 설정</button>
+      <button class="tab" data-tab="settings">사이트 설정</button>
+    </div>
+
+    <!-- 탭1: 사용자 관리 -->
+    <div class="tab-panel active" data-panel="users">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>사용자 추가</div>
+        <div class="card-desc">
+          이메일 (Google 계정) 과 권한을 지정하면 즉시 등록됩니다.
+        </div>
+        <div class="form-row">
+          <input type="email" id="new-email" placeholder="example@gmail.com">
+          <input type="text" id="new-name" placeholder="표시 이름 (선택)" style="max-width:200px;">
+          <select id="new-role">
+            <option value="grade1">1학년</option>
+            <option value="grade2">2학년</option>
+            <option value="grade3">3학년</option>
+            <option value="grade4">4학년</option>
+            <option value="alumni">졸업생</option>
+            <option value="admin">관리자</option>
+          </select>
+          <button class="btn btn-primary" onclick="addUser()">추가</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>등록된 사용자</div>
+        <div id="user-list-wrap">
+          <div class="empty">불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 탭2: 페이지 권한 -->
+    <div class="tab-panel" data-panel="pages">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>페이지 권한 설정</div>
+        <div class="card-desc">
+          각 페이지마다 어떤 학년이 열람할 수 있는지 칩을 클릭해 토글하세요. 변경은 즉시 저장됩니다.
+          <br>등록되지 않은 페이지는 모두에게 차단됩니다 (관리자 제외).
+        </div>
+
+        <div class="form-row" style="margin-bottom: 12px;">
+          <input type="text" id="page-search" placeholder="페이지 검색 (이름 또는 ID)">
+          <button class="btn btn-sm" onclick="syncFromIndex()">메인에서 가져오기</button>
+        </div>
+
+        <div id="selection-bar" style="display:none; align-items:center; gap:10px; padding:10px 14px; background:var(--accent-light); border:1px solid var(--accent-dim); border-radius:8px; margin-bottom:12px; flex-wrap:wrap;">
+          <span id="selection-count" style="font-family:'DM Mono',monospace; font-size:11px; font-weight:600; color:var(--accent);"></span>
+          <button class="btn btn-sm" onclick="selectAll()">전체 선택</button>
+          <button class="btn btn-sm" onclick="selectVisible()">검색결과 선택</button>
+          <button class="btn btn-sm" onclick="clearSelection()">선택 해제</button>
+          <span style="flex:1;"></span>
+          <button class="btn btn-sm btn-primary" onclick="goToBulkWithSelection()">선택한 파일 일괄 설정 →</button>
+        </div>
+
+        <div id="page-groups">
+          <div class="empty">불러오는 중...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>새 페이지 수동 추가</div>
+        <div class="card-desc">
+          index.html에 없는 페이지를 직접 추가할 때 사용합니다.
+          URL은 <code style="background:var(--surface-2); padding:1px 5px; border-radius:3px;">https://since2027.com/...</code> 형식.
+        </div>
+        <div class="form-row">
+          <input type="text" id="new-page-url" placeholder="https://since2027.com/bk/lawbrief004.html">
+          <input type="text" id="new-page-title" placeholder="페이지 제목" style="max-width:200px;">
+          <button class="btn btn-primary" onclick="addPageManual()">추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 탭3: 일괄 설정 -->
+    <div class="tab-panel" data-panel="bulk">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>일괄 권한 설정</div>
+        <div class="card-desc">
+          여러 페이지의 권한을 한 번에 설정합니다. URL 패턴을 지정하면 일치하는 모든 페이지에 적용됩니다.
+        </div>
+
+        <div class="bulk-controls">
+          <div class="bulk-section">
+            <div class="bulk-label">대상 페이지</div>
+            <div class="form-row">
+              <select id="bulk-target" style="flex:1;">
+                <option value="selected">선택한 파일들 (페이지 권한 탭에서 체크)</option>
+                <option value="all">전체 페이지</option>
+                <option value="folder-bk">/bk/ 폴더 (약사법)</option>
+                <option value="folder-sh">/sh/ 폴더 (상한론)</option>
+                <option value="prefix">URL 패턴 (직접입력)</option>
+              </select>
+            </div>
+            <input type="text" id="bulk-prefix" placeholder="예: lawbrief 또는 law0421"
+              style="width:100%; margin-top:8px; display:none;">
+            <div id="bulk-selected-info" style="margin-top:8px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted);"></div>
+          </div>
+
+          <div class="bulk-section">
+            <div class="bulk-label">설정할 권한</div>
+            <div class="role-chips" id="bulk-roles"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:14px;">
+          <button class="btn btn-primary" onclick="applyBulk()">적용</button>
+          <span id="bulk-preview" style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted);"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 탭4: 사이트 설정 -->
+    <div class="tab-panel" data-panel="settings">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>사이트 설정</div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="label">로그인 필수 모드</div>
+            <div class="desc">OFF로 하면 누구나 접속 가능 (디버깅 용도, 평소엔 ON)</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auth-required-toggle">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>사용 가이드</div>
+        <div style="font-size: 12.5px; line-height: 1.8; color: var(--text-soft);">
+          <p style="margin-bottom: 10px;"><b>1. 사용자 추가</b><br>
+          "사용자 관리" 탭에서 Google 계정 이메일을 입력하고 권한을 부여하세요.</p>
+
+          <p style="margin-bottom: 10px;"><b>2. 페이지 권한 설정</b><br>
+          "페이지 권한" 탭에서 각 페이지에 학년 칩을 클릭하면 즉시 적용됩니다.<br>
+          처음에는 "메인에서 가져오기"를 눌러 index.html의 모든 링크를 자동 등록하세요.</p>
+
+          <p style="margin-bottom: 10px;"><b>3. 일괄 설정</b><br>
+          예: "/bk/ 폴더 + 1학년·2학년 허용" → 약사법 자료를 1·2학년 전체에 한 번에 부여.</p>
+
+          <p style="margin-bottom: 10px;"><b>4. 보안 원칙</b><br>
+          • 권한 정보는 Firestore Rules로 보호되어 사용자가 자기 권한 외엔 알 수 없습니다.<br>
+          • 미등록 페이지는 자동 차단 (안전 우선).<br>
+          • URL 직접 입력 시에도 차단됩니다 (auth-guard.js 적용 페이지 한정).</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- Firebase + 로직                                                 -->
+<!-- ============================================================ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut as fbSignOut }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, deleteDoc, updateDoc,
+  collection, getDocs, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAtodnuV2rXtJXHJb2kc0AjeLQIWbv1yzA",
+  authDomain: "since2027-3fb3c.firebaseapp.com",
+  projectId: "since2027-3fb3c",
+  storageBucket: "since2027-3fb3c.firebasestorage.app",
+  messagingSenderId: "931680118450",
+  appId: "1:931680118450:web:e6c4b67cb77597f5164bab"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+const ROLES = [
+  { id: 'admin',  label: '관리자' },
+  { id: 'grade1', label: '1학년'  },
+  { id: 'grade2', label: '2학년'  },
+  { id: 'grade3', label: '3학년'  },
+  { id: 'grade4', label: '4학년'  },
+  { id: 'alumni', label: '졸업생' }
+];
+// 일반 사용자에게 부여 가능한 역할 (페이지 권한용 — admin은 항상 통과하므로 칩에 표시 안 함)
+const PAGE_ROLES = ROLES.filter(r => r.id !== 'admin');
+
+const gate     = document.getElementById('auth-gate');
+const appEl    = document.getElementById('app');
+const emailEl  = document.getElementById('admin-email');
+
+// ── 인증 게이트 ─────────────────────────────────────────
+function denyGate(msg) {
+  gate.classList.add('deny');
+  gate.querySelector('.gate-msg').textContent = msg;
+}
+function passGate() {
+  gate.style.display = 'none';
+  appEl.classList.add('visible');
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.replace('/?from=' + encodeURIComponent('/admin.html'));
+    return;
+  }
+  try {
+    const snap = await getDoc(doc(db, 'allowedUsers', user.email));
+    if (!snap.exists() || snap.data().role !== 'admin') {
+      denyGate('관리자 권한이 없습니다.');
+      return;
+    }
+    emailEl.textContent = user.email;
+    passGate();
+    init();
+  } catch (e) {
+    denyGate('권한 확인 중 오류가 발생했습니다.');
+  }
+});
+
+window.signOut = async () => {
+  await fbSignOut(auth);
+  window.location.href = '/';
+};
+
+// ── 토스트 ─────────────────────────────────────────────
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 2400);
+}
+
+// ── 모달 ────────────────────────────────────────────────
+function confirmAction(title, message, onOk) {
+  const m = document.getElementById('confirm-modal');
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  const okBtn = document.getElementById('confirm-ok');
+  // 기존 핸들러 제거를 위해 버튼 교체
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  newBtn.addEventListener('click', () => {
+    m.classList.remove('show');
+    onOk();
+  });
+  m.classList.add('show');
+}
+window.closeConfirm = () => {
+  document.getElementById('confirm-modal').classList.remove('show');
+};
+
+// ── 탭 ─────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    if (t.dataset.tab === 'pages') loadPages();
+    if (t.dataset.tab === 'users') loadUsers();
+    if (t.dataset.tab === 'settings') loadSettings();
+  });
+});
+
+// ── 초기화 ──────────────────────────────────────────────
+function init() {
+  loadUsers();
+  buildBulkRoleChips();
+  document.getElementById('bulk-target').addEventListener('change', e => {
+    document.getElementById('bulk-prefix').style.display =
+      e.target.value === 'prefix' ? 'block' : 'none';
+    updateBulkSelectedInfo();
+  });
+  document.getElementById('page-search').addEventListener('input', filterPages);
+}
+
+// ============================================================
+// 사용자 관리
+// ============================================================
+let _users = [];
+
+async function loadUsers() {
+  const wrap = document.getElementById('user-list-wrap');
+  wrap.innerHTML = '<div class="empty">불러오는 중...</div>';
+  try {
+    const snap = await getDocs(collection(db, 'allowedUsers'));
+    _users = [];
+    snap.forEach(d => _users.push({ email: d.id, ...d.data() }));
+    _users.sort((a, b) => {
+      const ra = ROLES.findIndex(r => r.id === a.role);
+      const rb = ROLES.findIndex(r => r.id === b.role);
+      if (ra !== rb) return ra - rb;
+      return a.email.localeCompare(b.email);
+    });
+    renderUsers();
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty">사용자 목록을 불러올 수 없습니다.</div>';
+  }
+}
+
+function renderUsers() {
+  const wrap = document.getElementById('user-list-wrap');
+  if (_users.length === 0) {
+    wrap.innerHTML = '<div class="empty">등록된 사용자가 없습니다.</div>';
+    return;
+  }
+  let html = '<table class="user-table"><thead><tr>';
+  html += '<th>이메일</th><th>이름</th><th>권한</th><th></th>';
+  html += '</tr></thead><tbody>';
+  _users.forEach(u => {
+    const roleDef = ROLES.find(r => r.id === u.role) || { label: u.role };
+    html += `<tr data-email="${escAttr(u.email)}">`;
+    html += `<td>${escHtml(u.email)}</td>`;
+    html += `<td class="name">${escHtml(u.displayName || '-')}</td>`;
+    html += `<td><select class="role-select" data-email="${escAttr(u.email)}">`;
+    ROLES.forEach(r => {
+      html += `<option value="${r.id}" ${r.id === u.role ? 'selected' : ''}>${r.label}</option>`;
+    });
+    html += `</select></td>`;
+    html += `<td style="text-align:right;"><button class="btn btn-sm btn-danger" data-del="${escAttr(u.email)}">삭제</button></td>`;
+    html += `</tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  // 권한 변경
+  wrap.querySelectorAll('.role-select').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      const email = e.target.dataset.email;
+      const newRole = e.target.value;
+      try {
+        await updateDoc(doc(db, 'allowedUsers', email), { role: newRole });
+        toast(`${email} 권한 변경됨`, 'success');
+        const u = _users.find(x => x.email === email);
+        if (u) u.role = newRole;
+      } catch (err) {
+        toast('변경 실패', 'error');
+        loadUsers();
+      }
+    });
+  });
+
+  // 삭제
+  wrap.querySelectorAll('button[data-del]').forEach(b => {
+    b.addEventListener('click', () => {
+      const email = b.dataset.del;
+      confirmAction(
+        '사용자 삭제',
+        `${email} 을(를) 삭제하시겠습니까? 이 사용자는 더 이상 사이트에 접속할 수 없습니다.`,
+        async () => {
+          try {
+            await deleteDoc(doc(db, 'allowedUsers', email));
+            toast('삭제 완료', 'success');
+            loadUsers();
+          } catch (e) {
+            toast('삭제 실패', 'error');
+          }
+        }
+      );
+    });
+  });
+}
+
+window.addUser = async () => {
+  const email = document.getElementById('new-email').value.trim().toLowerCase();
+  const name  = document.getElementById('new-name').value.trim();
+  const role  = document.getElementById('new-role').value;
+  if (!email || !email.includes('@')) {
+    toast('올바른 이메일을 입력하세요', 'error');
+    return;
+  }
+  try {
+    await setDoc(doc(db, 'allowedUsers', email), {
+      role,
+      displayName: name || '',
+      createdAt: new Date().toISOString()
+    });
+    toast('사용자 추가됨', 'success');
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-name').value = '';
+    loadUsers();
+  } catch (e) {
+    toast('추가 실패: ' + (e.message || e), 'error');
+  }
+};
+
+// ============================================================
+// 페이지 권한
+// ============================================================
+let _pages = [];
+const _selectedPageIds = new Set();
+
+function updateSelectionBar() {
+  const bar = document.getElementById('selection-bar');
+  const count = _selectedPageIds.size;
+  if (count === 0) {
+    bar.style.display = 'none';
+  } else {
+    bar.style.display = 'flex';
+    document.getElementById('selection-count').textContent = `${count}개 선택됨`;
+  }
+}
+
+window.selectAll = () => {
+  _pages.forEach(p => _selectedPageIds.add(p.id));
+  document.querySelectorAll('.page-checkbox').forEach(cb => {
+    cb.checked = true;
+    cb.closest('.page-row')?.classList.add('selected');
+  });
+  updateSelectionBar();
+};
+
+window.selectVisible = () => {
+  document.querySelectorAll('.page-row').forEach(row => {
+    if (row.style.display === 'none') return;
+    const pid = row.dataset.pageId;
+    _selectedPageIds.add(pid);
+    const cb = row.querySelector('.page-checkbox');
+    if (cb) cb.checked = true;
+    row.classList.add('selected');
+  });
+  updateSelectionBar();
+};
+
+window.selectGroup = (groupKey) => {
+  document.querySelectorAll(`.page-row[data-group="${groupKey}"]`).forEach(row => {
+    const pid = row.dataset.pageId;
+    _selectedPageIds.add(pid);
+    const cb = row.querySelector('.page-checkbox');
+    if (cb) cb.checked = true;
+    row.classList.add('selected');
+  });
+  updateSelectionBar();
+};
+
+window.clearSelection = () => {
+  _selectedPageIds.clear();
+  document.querySelectorAll('.page-checkbox').forEach(cb => {
+    cb.checked = false;
+    cb.closest('.page-row')?.classList.remove('selected');
+  });
+  updateSelectionBar();
+};
+
+window.goToBulkWithSelection = () => {
+  // 일괄 설정 탭으로 이동 + 선택한 파일들 옵션 자동 설정
+  document.querySelector('.tab[data-tab="bulk"]').click();
+  document.getElementById('bulk-target').value = 'selected';
+  document.getElementById('bulk-target').dispatchEvent(new Event('change'));
+  updateBulkSelectedInfo();
+};
+
+function updateBulkSelectedInfo() {
+  const info = document.getElementById('bulk-selected-info');
+  if (!info) return;
+  const target = document.getElementById('bulk-target').value;
+  if (target === 'selected') {
+    info.textContent = `현재 ${_selectedPageIds.size}개 파일이 선택되어 있습니다.`;
+    info.style.color = _selectedPageIds.size > 0 ? 'var(--accent)' : 'var(--red)';
+  } else {
+    info.textContent = '';
+  }
+}
+
+async function loadPages() {
+  const container = document.getElementById('page-groups');
+  container.innerHTML = '<div class="empty">불러오는 중...</div>';
+  try {
+    const snap = await getDocs(collection(db, 'pageAccess'));
+    _pages = [];
+    snap.forEach(d => _pages.push({ id: d.id, ...d.data() }));
+    _pages.sort((a, b) => a.id.localeCompare(b.id));
+    renderPages();
+  } catch (e) {
+    container.innerHTML = '<div class="empty">페이지 목록을 불러올 수 없습니다.</div>';
+  }
+}
+
+function renderPages() {
+  const container = document.getElementById('page-groups');
+  if (_pages.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        등록된 페이지가 없습니다.<br><br>
+        <button class="btn btn-primary" onclick="syncFromIndex()">메인에서 가져오기</button>
+      </div>`;
+    return;
+  }
+
+  // 폴더(첫 prefix)별로 그룹핑: bk_..., sh_..., index, etc.
+  const groups = {};
+  _pages.forEach(p => {
+    const parts = p.id.split('_');
+    const key = parts.length > 1 ? parts[0] : 'root';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+
+  const groupLabels = {
+    'bk': '약사법 (/bk/)',
+    'sh': '상한론 (/sh/)',
+    'root': '기타'
+  };
+
+  let html = '';
+  Object.keys(groups).sort().forEach(key => {
+    const list = groups[key];
+    const title = groupLabels[key] || `/${key}/`;
+    html += `<div class="page-group open">`;
+    html += `<div class="page-group-header">`;
+    html += `<div class="page-group-title" onclick="this.closest('.page-group').classList.toggle('open')" style="cursor:pointer;"><span class="arrow">▶</span>${title}</div>`;
+    html += `<div style="display:flex; align-items:center; gap:10px;">`;
+    html += `<button class="btn btn-sm" onclick="event.stopPropagation(); selectGroup('${escAttr(key)}')">그룹 선택</button>`;
+    html += `<div class="page-group-count">${list.length} pages</div>`;
+    html += `</div>`;
+    html += `</div>`;
+    html += `<div class="page-group-body">`;
+    list.forEach(p => {
+      const isSelected = _selectedPageIds.has(p.id);
+      html += `<div class="page-row${isSelected ? ' selected' : ''}" data-page-id="${escAttr(p.id)}" data-group="${escAttr(key)}">`;
+      html += `<input type="checkbox" class="page-checkbox" data-pid="${escAttr(p.id)}"${isSelected ? ' checked' : ''}>`;
+      html += `<div class="page-info">`;
+      html += `<div class="page-name">${escHtml(p.title || p.id)}</div>`;
+      html += `<div class="page-id">${escHtml(p.id)}</div>`;
+      html += `</div>`;
+      html += `<div class="page-roles">`;
+      const allowed = p.allowedRoles || [];
+      PAGE_ROLES.forEach(r => {
+        const active = allowed.includes(r.id);
+        html += `<span class="role-chip ${active ? 'active' : ''}" data-page="${escAttr(p.id)}" data-role="${r.id}">${r.label}</span>`;
+      });
+      html += `</div>`;
+      html += `<button class="btn btn-sm btn-danger" data-delpage="${escAttr(p.id)}">삭제</button>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  });
+  container.innerHTML = html;
+
+  // 체크박스 이벤트
+  container.querySelectorAll('.page-checkbox').forEach(cb => {
+    cb.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = cb.dataset.pid;
+      if (cb.checked) _selectedPageIds.add(pid);
+      else _selectedPageIds.delete(pid);
+      updateSelectionBar();
+      // 행 하이라이트
+      const row = cb.closest('.page-row');
+      if (row) row.classList.toggle('selected', cb.checked);
+    });
+  });
+
+  // 칩 토글
+  container.querySelectorAll('.role-chip').forEach(chip => {
+    chip.addEventListener('click', async () => {
+      const pageId = chip.dataset.page;
+      const role = chip.dataset.role;
+      const page = _pages.find(p => p.id === pageId);
+      if (!page) return;
+      const allowed = new Set(page.allowedRoles || []);
+      if (allowed.has(role)) allowed.delete(role);
+      else allowed.add(role);
+      const arr = Array.from(allowed);
+      try {
+        await updateDoc(doc(db, 'pageAccess', pageId), { allowedRoles: arr });
+        page.allowedRoles = arr;
+        chip.classList.toggle('active');
+      } catch (e) {
+        toast('변경 실패', 'error');
+      }
+    });
+  });
+
+  // 페이지 삭제
+  container.querySelectorAll('button[data-delpage]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.dataset.delpage;
+      confirmAction(
+        '페이지 권한 설정 삭제',
+        `${id} 의 권한 설정을 삭제하시겠습니까? 삭제 후 이 페이지는 모두에게 차단됩니다.`,
+        async () => {
+          try {
+            await deleteDoc(doc(db, 'pageAccess', id));
+            toast('삭제 완료', 'success');
+            loadPages();
+          } catch (e) {
+            toast('삭제 실패', 'error');
+          }
+        }
+      );
+    });
+  });
+
+  filterPages();
+  updateSelectionBar();
+}
+
+function filterPages() {
+  const q = document.getElementById('page-search').value.trim().toLowerCase();
+  document.querySelectorAll('.page-row').forEach(row => {
+    const id = row.dataset.pageId.toLowerCase();
+    const name = row.querySelector('.page-name').textContent.toLowerCase();
+    row.style.display = (id.includes(q) || name.includes(q)) ? '' : 'none';
+  });
+}
+
+// URL → pageId
+function urlToPageId(href) {
+  try {
+    const u = new URL(href, 'https://since2027.com');
+    let path = u.pathname.replace(/^\/+/, '').replace(/\.html$/i, '');
+    if (!path || path.endsWith('/')) path += 'index';
+    return path.replace(/\//g, '_').replace(/[^a-zA-Z0-9_\-()]/g, '');
+  } catch (e) { return null; }
+}
+
+// 메인 페이지(index.html)에서 모든 file-link를 가져와 pageAccess에 등록
+window.syncFromIndex = async () => {
+  toast('메인 페이지를 분석 중...');
+  try {
+    const res = await fetch('/index.html', { cache: 'no-cache' });
+    const text = await res.text();
+    const parser = new DOMParser();
+    const dom = parser.parseFromString(text, 'text/html');
+    const links = Array.from(dom.querySelectorAll('a.file-link[href]'));
+
+    // 이미 있는 pageId 목록
+    const existing = new Set(_pages.map(p => p.id));
+
+    const batch = writeBatch(db);
+    let added = 0;
+    links.forEach(a => {
+      const href = a.getAttribute('href');
+      const pid = urlToPageId(href);
+      if (!pid || existing.has(pid)) return;
+      // 제목: .link-name 텍스트 + (선택) sub
+      const nameEl = a.querySelector('.link-name');
+      const title = nameEl ? nameEl.textContent.trim() : pid;
+      batch.set(doc(db, 'pageAccess', pid), {
+        title: title,
+        url: href,
+        allowedRoles: [],
+        createdAt: new Date().toISOString()
+      });
+      existing.add(pid);
+      added++;
+    });
+    if (added === 0) {
+      toast('새로 추가된 페이지가 없습니다');
+      return;
+    }
+    await batch.commit();
+    toast(`${added}개 페이지 추가됨`, 'success');
+    loadPages();
+  } catch (e) {
+    toast('가져오기 실패: ' + (e.message || e), 'error');
+  }
+};
+
+// 수동 추가
+window.addPageManual = async () => {
+  const url = document.getElementById('new-page-url').value.trim();
+  const title = document.getElementById('new-page-title').value.trim();
+  if (!url) { toast('URL을 입력하세요', 'error'); return; }
+  const pid = urlToPageId(url);
+  if (!pid) { toast('유효하지 않은 URL', 'error'); return; }
+  try {
+    await setDoc(doc(db, 'pageAccess', pid), {
+      title: title || pid,
+      url: url,
+      allowedRoles: [],
+      createdAt: new Date().toISOString()
+    });
+    toast('페이지 추가됨', 'success');
+    document.getElementById('new-page-url').value = '';
+    document.getElementById('new-page-title').value = '';
+    loadPages();
+  } catch (e) {
+    toast('추가 실패', 'error');
+  }
+};
+
+// ============================================================
+// 일괄 설정
+// ============================================================
+const bulkSelectedRoles = new Set();
+function buildBulkRoleChips() {
+  const wrap = document.getElementById('bulk-roles');
+  wrap.innerHTML = '';
+  PAGE_ROLES.forEach(r => {
+    const chip = document.createElement('span');
+    chip.className = 'role-chip';
+    chip.textContent = r.label;
+    chip.dataset.role = r.id;
+    chip.addEventListener('click', () => {
+      if (bulkSelectedRoles.has(r.id)) {
+        bulkSelectedRoles.delete(r.id);
+        chip.classList.remove('active');
+      } else {
+        bulkSelectedRoles.add(r.id);
+        chip.classList.add('active');
+      }
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+window.applyBulk = async () => {
+  if (_pages.length === 0) await loadPages();
+  if (_pages.length === 0) { toast('등록된 페이지가 없습니다', 'error'); return; }
+
+  const target = document.getElementById('bulk-target').value;
+  const prefix = document.getElementById('bulk-prefix').value.trim();
+  const roles = Array.from(bulkSelectedRoles);
+
+  let targets;
+  if (target === 'selected') {
+    targets = _pages.filter(p => _selectedPageIds.has(p.id));
+    if (targets.length === 0) {
+      toast('선택된 파일이 없습니다. "페이지 권한" 탭에서 체크박스로 선택하세요.', 'error');
+      return;
+    }
+  } else if (target === 'all') {
+    targets = _pages;
+  } else if (target === 'folder-bk') {
+    targets = _pages.filter(p => p.id.startsWith('bk_'));
+  } else if (target === 'folder-sh') {
+    targets = _pages.filter(p => p.id.startsWith('sh_'));
+  } else if (target === 'prefix') {
+    if (!prefix) { toast('패턴을 입력하세요', 'error'); return; }
+    targets = _pages.filter(p => p.id.includes(prefix));
+  }
+
+  if (!targets || targets.length === 0) { toast('대상 페이지가 없습니다', 'error'); return; }
+
+  confirmAction(
+    '일괄 설정 적용',
+    `${targets.length}개 페이지에 ${roles.length === 0 ? '권한 없음(모두 차단)' : roles.join(', ')} 을 적용합니다. 진행할까요?`,
+    async () => {
+      try {
+        const batch = writeBatch(db);
+        targets.forEach(p => {
+          batch.update(doc(db, 'pageAccess', p.id), { allowedRoles: roles });
+        });
+        await batch.commit();
+        toast(`${targets.length}개 페이지 업데이트 완료`, 'success');
+        loadPages();
+      } catch (e) {
+        toast('적용 실패', 'error');
+      }
+    }
+  );
+};
+
+// ============================================================
+// 사이트 설정
+// ============================================================
+async function loadSettings() {
+  const tog = document.getElementById('auth-required-toggle');
+  try {
+    const snap = await getDoc(doc(db, 'config', 'access'));
+    tog.checked = snap.exists() ? snap.data().authRequired !== false : true;
+  } catch (e) {
+    tog.checked = true;
+  }
+  tog.onchange = async () => {
+    try {
+      await setDoc(doc(db, 'config', 'access'), { authRequired: tog.checked }, { merge: true });
+      toast('설정 저장됨', 'success');
+    } catch (e) {
+      toast('저장 실패', 'error');
+      tog.checked = !tog.checked;
+    }
+  };
+}
+
+// ── 유틸 ────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escAttr(s) {
+  return escHtml(s);
+}
+</script>
+</body>
+</html>
