@@ -347,14 +347,14 @@
 <!-- 토스트 -->
 <div id="toast-container"></div>
 
-<!-- 모달: 삭제 확인 -->
+<!-- 모달: 확인 -->
 <div class="modal-backdrop" id="confirm-modal">
   <div class="modal">
     <h3 id="confirm-title">확인</h3>
     <p id="confirm-message">정말 진행하시겠습니까?</p>
     <div class="modal-actions">
       <button class="btn" onclick="closeConfirm()">취소</button>
-      <button class="btn btn-danger" id="confirm-ok">삭제</button>
+      <button class="btn" id="confirm-ok">확인</button>
     </div>
   </div>
 </div>
@@ -629,7 +629,7 @@ function toast(msg, type = '') {
 }
 
 // ── 모달 ────────────────────────────────────────────────
-function confirmAction(title, message, onOk) {
+function confirmAction(title, message, onOk, opts = {}) {
   const m = document.getElementById('confirm-modal');
   document.getElementById('confirm-title').textContent = title;
   document.getElementById('confirm-message').textContent = message;
@@ -637,6 +637,13 @@ function confirmAction(title, message, onOk) {
   // 기존 핸들러 제거를 위해 버튼 교체
   const newBtn = okBtn.cloneNode(true);
   okBtn.parentNode.replaceChild(newBtn, okBtn);
+
+  // 버튼 라벨/스타일 동적 설정
+  const okLabel = opts.okLabel || '확인';
+  const okStyle = opts.okStyle || 'primary'; // 'primary' | 'danger'
+  newBtn.textContent = okLabel;
+  newBtn.className = 'btn ' + (okStyle === 'danger' ? 'btn-danger' : 'btn-primary');
+
   newBtn.addEventListener('click', () => {
     m.classList.remove('show');
     onOk();
@@ -753,7 +760,8 @@ function renderUsers() {
           } catch (e) {
             toast('삭제 실패', 'error');
           }
-        }
+        },
+        { okLabel: '삭제', okStyle: 'danger' }
       );
     });
   });
@@ -985,7 +993,8 @@ function renderPages() {
           } catch (e) {
             toast('삭제 실패', 'error');
           }
-        }
+        },
+        { okLabel: '삭제', okStyle: 'danger' }
       );
     });
   });
@@ -1132,9 +1141,15 @@ window.applyBulk = async () => {
 
   if (!targets || targets.length === 0) { toast('대상 페이지가 없습니다', 'error'); return; }
 
+  // 권한 라벨을 한글로 표시 (grade1 → 1학년)
+  const roleLabels = roles.map(rid => {
+    const r = ROLES.find(x => x.id === rid);
+    return r ? r.label : rid;
+  });
+
   confirmAction(
     '일괄 설정 적용',
-    `${targets.length}개 페이지에 ${roles.length === 0 ? '권한 없음(모두 차단)' : roles.join(', ')} 을 적용합니다. 진행할까요?`,
+    `${targets.length}개 페이지에 ${roleLabels.length === 0 ? '권한 없음(모두 차단)' : roleLabels.join(', ')} 을(를) 적용합니다. 진행할까요?`,
     async () => {
       try {
         const batch = writeBatch(db);
@@ -1147,7 +1162,8 @@ window.applyBulk = async () => {
       } catch (e) {
         toast('적용 실패', 'error');
       }
-    }
+    },
+    { okLabel: '적용', okStyle: 'primary' }
   );
 };
 
