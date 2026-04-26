@@ -211,6 +211,50 @@
     font-family: 'DM Mono', monospace; font-size: 10px;
     color: var(--text-muted);
   }
+  .req-hint.req-hint-warning {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left: 3px solid #dc2626;
+    border-radius: 6px;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #dc2626;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+  .req-hint.req-hint-warning::before {
+    content: '⚠ ';
+    margin-right: 2px;
+  }
+
+  /* 이메일 입력: ID 부분 + @gmail.com 고정 */
+  .req-email-split {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: border-color 0.18s;
+  }
+  .req-email-split:focus-within { border-color: var(--accent); }
+  .req-email-split input {
+    flex: 1; min-width: 0;
+    padding: 10px 12px;
+    border: none; outline: none;
+    font-family: 'Noto Serif KR', serif; font-size: 13px;
+    color: var(--text); background: transparent;
+  }
+  .req-email-split .domain-suffix {
+    display: flex; align-items: center;
+    padding: 0 12px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    color: var(--text-muted); font-weight: 500;
+    user-select: none; white-space: nowrap;
+  }
 
   .req-error {
     display: none; padding: 10px 12px; margin-bottom: 12px;
@@ -333,8 +377,11 @@
 
       <label class="req-field">
         <span class="req-label">이메일 <em>*</em></span>
-        <input type="email" id="req-email" maxlength="100" placeholder="example@gmail.com" autocomplete="email">
-        <span class="req-hint">Google 계정 이메일을 입력해주세요.</span>
+        <div class="req-email-split">
+          <input type="text" id="req-email" maxlength="64" placeholder="example" autocomplete="username" inputmode="email">
+          <span class="domain-suffix">@gmail.com</span>
+        </div>
+        <span class="req-hint req-hint-warning">Google 계정(@gmail.com)만 가능합니다</span>
       </label>
 
       <label class="req-field">
@@ -573,6 +620,22 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && reqModal.classList.contains('show')) closeRequestModal();
 });
 
+// 이메일 ID 입력란: @gmail.com 자동 제거 + 소문자 변환
+const reqEmailInput = document.getElementById('req-email');
+reqEmailInput.addEventListener('input', (e) => {
+  let v = e.target.value;
+  // 풀 이메일을 붙여넣었다면 @gmail.com 제거
+  const lower = v.toLowerCase();
+  if (lower.includes('@gmail.com')) {
+    v = lower.replace('@gmail.com', '');
+  }
+  // 공백 제거
+  v = v.replace(/\s/g, '');
+  if (v !== e.target.value) {
+    e.target.value = v;
+  }
+});
+
 // 클라이언트 단 중복 신청 방지 (브라우저 localStorage 활용)
 // 1시간 = 3,600,000ms. localStorage는 브라우저 종료 후에도 유지되므로
 // sessionStorage보다 효과적인 차단이 가능.
@@ -610,24 +673,42 @@ function showReqError(msg) {
 window.submitRequest = async () => {
   reqError.classList.remove('show');
 
-  const name    = document.getElementById('req-name').value.trim();
-  const phone   = document.getElementById('req-phone').value.trim();
-  const email   = document.getElementById('req-email').value.trim().toLowerCase();
-  const message = document.getElementById('req-message').value.trim();
+  const name      = document.getElementById('req-name').value.trim();
+  const phone     = document.getElementById('req-phone').value.trim();
+  const emailIdRaw = document.getElementById('req-email').value.trim().toLowerCase();
+  const message   = document.getElementById('req-message').value.trim();
 
   // 유효성 검사
   if (!name) {
     showReqError('이름을 입력해주세요.');
     return;
   }
-  if (!email) {
-    showReqError('이메일을 입력해주세요.');
+  if (!emailIdRaw) {
+    showReqError('이메일 아이디를 입력해주세요.');
     return;
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showReqError('올바른 이메일 형식이 아닙니다.');
+  // 사용자가 실수로 @gmail.com 까지 입력했다면 잘라냄
+  let emailId = emailIdRaw;
+  if (emailId.endsWith('@gmail.com')) {
+    emailId = emailId.slice(0, -'@gmail.com'.length);
+  }
+  // @ 가 남아있으면 형식 오류
+  if (emailId.includes('@')) {
+    showReqError('@는 입력하지 마세요. ID만 입력하시면 자동으로 @gmail.com이 붙습니다.');
     return;
   }
+  // Gmail ID 형식 검증: 영문/숫자/마침표 6~30자
+  // (Gmail은 실제로 6~30자, 영문 시작, 영숫자/마침표만 허용)
+  if (!/^[a-z0-9](\.?[a-z0-9])*$/.test(emailId)) {
+    showReqError('Gmail ID 형식이 올바르지 않습니다. 영문/숫자/마침표만 사용 가능합니다.');
+    return;
+  }
+  if (emailId.length < 6 || emailId.length > 30) {
+    showReqError('Gmail ID는 6자 이상 30자 이하여야 합니다.');
+    return;
+  }
+
+  const email = emailId + '@gmail.com';
 
   // 중복 신청 방지
   const waitMs = checkRecentSubmission();
