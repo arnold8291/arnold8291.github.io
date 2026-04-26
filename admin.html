@@ -507,6 +507,30 @@
           <span id="bulk-preview" style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted);"></span>
         </div>
       </div>
+
+      <!-- 긴급 잠금 카드 -->
+      <div class="card" style="border-color:#fcd34d; background:#fffbeb;">
+        <div class="card-title">
+          <span class="dot" style="background:#dc2626;"></span>
+          긴급 잠금 / 복원
+        </div>
+        <div class="card-desc">
+          <b style="color:#92400e;">⚠️ 비상 상황용 기능입니다.</b><br>
+          전체 잠금: 모든 페이지에서 일반 사용자(학생·가족)의 권한을 제거합니다.
+          관리자(본인)만 모든 페이지에 계속 접근 가능합니다.<br>
+          복원: 마지막으로 잠그기 직전의 권한 상태로 되돌립니다.
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button class="btn" style="border-color:#dc2626; color:#dc2626;" onclick="emergencyLockAll()">
+            🔒 전체 잠금 (관리자만 접근)
+          </button>
+          <button class="btn" id="restore-btn" onclick="restoreFromBackup()" disabled>
+            ↩️ 잠금 전 상태로 복원
+          </button>
+          <span id="lock-status" style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); margin-left:auto;"></span>
+        </div>
+      </div>
     </div>
 
     <!-- 탭4: 사이트 설정 -->
@@ -677,6 +701,7 @@ document.querySelectorAll('.tab').forEach(t => {
     document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
     if (t.dataset.tab === 'pages') loadPages();
     if (t.dataset.tab === 'users') loadUsers();
+    if (t.dataset.tab === 'bulk') { loadPages(); loadLockStatus(); }
     if (t.dataset.tab === 'settings') loadSettings();
   });
 });
@@ -1190,6 +1215,150 @@ window.applyBulk = async () => {
       }
     },
     { okLabel: '적용', okStyle: 'primary' }
+  );
+};
+
+// ============================================================
+// 긴급 잠금 / 복원
+// ============================================================
+// 백업 위치: Firestore의 lockBackup/last 문서
+// 구조: { pages: [{id, allowedRoles}, ...], lockedAt: timestamp, lockedBy: email }
+
+async function loadLockStatus() {
+  const statusEl = document.getElementById('lock-status');
+  const restoreBtn = document.getElementById('restore-btn');
+  if (!statusEl || !restoreBtn) return;
+  try {
+    const snap = await getDoc(doc(db, 'lockBackup', 'last'));
+    if (snap.exists()) {
+      const data = snap.data();
+      const date = data.lockedAt ? new Date(data.lockedAt).toLocaleString('ko-KR') : '?';
+      statusEl.textContent = `복원 가능: ${date}`;
+      statusEl.style.color = 'var(--accent)';
+      restoreBtn.disabled = false;
+    } else {
+      statusEl.textContent = '복원할 백업 없음';
+      statusEl.style.color = 'var(--text-muted)';
+      restoreBtn.disabled = true;
+    }
+  } catch (e) {
+    statusEl.textContent = '';
+    restoreBtn.disabled = true;
+  }
+}
+
+window.emergencyLockAll = async () => {
+  if (_pages.length === 0) await loadPages();
+  if (_pages.length === 0) {
+    toast('등록된 페이지가 없습니다', 'error');
+    return;
+  }
+
+  // 이미 모두 잠겨있으면 (allowedRoles가 모두 빈 배열) 안내
+  const alreadyLocked = _pages.every(p => !p.allowedRoles || p.allowedRoles.length === 0);
+  if (alreadyLocked) {
+    toast('이미 모든 페이지가 잠겨 있습니다', 'error');
+    return;
+  }
+
+  confirmAction(
+    '⚠️ 전체 잠금 실행',
+    `${_pages.length}개의 모든 페이지에서 일반 사용자(학생·가족) 권한을 제거합니다.\n\n` +
+    `잠금 후에는 관리자(본인)만 모든 페이지에 접근할 수 있습니다.\n` +
+    `현재 상태는 자동 백업되며, "복원" 버튼으로 되돌릴 수 있습니다.\n\n` +
+    `정말 진행하시겠습니까?`,
+    async () => {
+      try {
+        // 1) 현재 권한 상태를 lockBackup/last에 저장
+        const backupPages = _pages.map(p => ({
+          id: p.id,
+          allowedRoles: p.allowedRoles || []
+        }));
+        const adminEmail = document.getElementById('admin-email').textContent || '';
+        await setDoc(doc(db, 'lockBackup', 'last'), {
+          pages: backupPages,
+          lockedAt: new Date().toISOString(),
+          lockedBy: adminEmail
+        });
+
+        // 2) 모든 페이지의 allowedRoles를 [] 로 일괄 변경
+        // Firestore batch는 500개 제한이 있으니 분할
+        const CHUNK = 400;
+        for (let i = 0; i < _pages.length; i += CHUNK) {
+          const batch = writeBatch(db);
+          _pages.slice(i, i + CHUNK).forEach(p => {
+            batch.update(doc(db, 'pageAccess', p.id), { allowedRoles: [] });
+          });
+          await batch.commit();
+        }
+
+        toast(`🔒 ${_pages.length}개 페이지 잠금 완료`, 'success');
+        loadPages();
+        loadLockStatus();
+      } catch (e) {
+        toast('잠금 실패: ' + (e.message || e), 'error');
+      }
+    },
+    { okLabel: '전체 잠금', okStyle: 'danger' }
+  );
+};
+
+window.restoreFromBackup = async () => {
+  let backup;
+  try {
+    const snap = await getDoc(doc(db, 'lockBackup', 'last'));
+    if (!snap.exists()) {
+      toast('복원할 백업이 없습니다', 'error');
+      loadLockStatus();
+      return;
+    }
+    backup = snap.data();
+  } catch (e) {
+    toast('백업 조회 실패', 'error');
+    return;
+  }
+
+  if (!backup.pages || backup.pages.length === 0) {
+    toast('백업 데이터가 비어있습니다', 'error');
+    return;
+  }
+
+  const lockedAt = backup.lockedAt ? new Date(backup.lockedAt).toLocaleString('ko-KR') : '?';
+
+  confirmAction(
+    '잠금 전 상태로 복원',
+    `${lockedAt} 시점의 권한 상태로 ${backup.pages.length}개 페이지를 복원합니다.\n\n` +
+    `현재 잠겨있는 권한 상태는 사라집니다. 진행할까요?`,
+    async () => {
+      try {
+        // 현재 등록된 페이지 ID 목록 (백업 시점 이후 삭제된 페이지는 건너뜀)
+        const currentIds = new Set(_pages.map(p => p.id));
+
+        const CHUNK = 400;
+        const toUpdate = backup.pages.filter(b => currentIds.has(b.id));
+        let restored = 0;
+        for (let i = 0; i < toUpdate.length; i += CHUNK) {
+          const batch = writeBatch(db);
+          toUpdate.slice(i, i + CHUNK).forEach(b => {
+            batch.update(doc(db, 'pageAccess', b.id), {
+              allowedRoles: b.allowedRoles || []
+            });
+            restored++;
+          });
+          await batch.commit();
+        }
+
+        // 복원 후 백업 삭제 (한 번만 사용)
+        await deleteDoc(doc(db, 'lockBackup', 'last'));
+
+        toast(`↩️ ${restored}개 페이지 복원 완료`, 'success');
+        loadPages();
+        loadLockStatus();
+      } catch (e) {
+        toast('복원 실패: ' + (e.message || e), 'error');
+      }
+    },
+    { okLabel: '복원', okStyle: 'primary' }
   );
 };
 
