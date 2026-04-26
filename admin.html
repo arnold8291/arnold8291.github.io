@@ -374,7 +374,6 @@
       </div>
       <div class="right">
         <span class="email" id="admin-email"></span>
-        <a class="btn-link" href="/">사이트로</a>
         <button class="btn-link" onclick="signOut()">로그아웃</button>
       </div>
     </div>
@@ -389,6 +388,21 @@
 
     <!-- 탭1: 사용자 관리 -->
     <div class="tab-panel active" data-panel="users">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>그룹별 페이지 바로가기</div>
+        <div class="card-desc">
+          각 그룹의 메인 페이지를 새 탭에서 미리 볼 수 있습니다 (관리자는 모든 페이지 접근 가능).
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <a class="btn" href="/study.html" target="_blank" rel="noopener">📚 학생용 (study)</a>
+          <a class="btn" href="/family/family1.html" target="_blank" rel="noopener">👨‍👩‍👧 가족1</a>
+          <a class="btn" href="/family/family2.html" target="_blank" rel="noopener">👨‍👩‍👧 가족2</a>
+          <a class="btn" href="/family/family3.html" target="_blank" rel="noopener">👨‍👩‍👧 가족3</a>
+          <a class="btn" href="/family/family4.html" target="_blank" rel="noopener">👨‍👩‍👧 가족4</a>
+          <a class="btn" href="/family/family5.html" target="_blank" rel="noopener">👨‍👩‍👧 가족5</a>
+        </div>
+      </div>
 
       <div class="card">
         <div class="card-title"><span class="dot"></span>사용자 추가</div>
