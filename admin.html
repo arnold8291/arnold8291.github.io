@@ -113,6 +113,61 @@
   .tab:hover { color: var(--text); }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+  .tab-badge {
+    display: none;
+    background: #dc2626; color: #fff;
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    font-weight: 600; padding: 2px 6px;
+    border-radius: 10px; margin-left: 4px;
+    min-width: 18px; text-align: center;
+    letter-spacing: 0;
+  }
+  .tab-badge.show { display: inline-block; }
+
+  .request-card {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 10px;
+    transition: border-color 0.18s;
+  }
+  .request-card:hover { border-color: var(--accent-dim); }
+  .request-card-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 10px;
+  }
+  .request-card-info { flex: 1; min-width: 0; }
+  .request-name {
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 4px;
+  }
+  .request-email {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--accent); word-break: break-all;
+  }
+  .request-meta {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    margin-top: 8px;
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted);
+  }
+  .request-meta span strong {
+    color: var(--text); font-weight: 600;
+  }
+  .request-message {
+    margin-top: 10px; padding: 10px 12px;
+    background: var(--surface); border-radius: 8px;
+    font-size: 12.5px; color: var(--text-soft); line-height: 1.6;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .request-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--surface-2);
+  }
+  .request-card-time {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--text-muted); white-space: nowrap;
+  }
+
   .tab-panel { display: none; animation: fadeIn 0.25s ease both; }
   .tab-panel.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -359,6 +414,27 @@
   </div>
 </div>
 
+<!-- 모달: 신청 승인 (권한 선택) -->
+<div class="modal-backdrop" id="approve-modal">
+  <div class="modal">
+    <h3>사용 신청 승인</h3>
+    <p style="margin-bottom:8px;">아래 사용자에게 부여할 권한을 선택하세요.</p>
+    <div id="approve-info" style="background:var(--surface); padding:12px 14px; border-radius:8px; margin-bottom:16px; font-family:'DM Mono',monospace; font-size:12px; line-height:1.7;"></div>
+    <div style="margin-bottom:16px;">
+      <label style="display:block; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">
+        부여할 권한
+      </label>
+      <select id="approve-role" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-family:'DM Mono',monospace; font-size:12px; background:#fff;">
+        <!-- JS에서 채움 -->
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeApproveModal()">취소</button>
+      <button class="btn btn-primary" id="approve-confirm-btn">승인 및 등록</button>
+    </div>
+  </div>
+</div>
+
 <!-- 앱 -->
 <div id="app">
   <div class="container">
@@ -381,6 +457,7 @@
     <!-- 탭 -->
     <div class="tabs">
       <button class="tab active" data-tab="users">사용자 관리</button>
+      <button class="tab" data-tab="requests">사용 신청 <span id="req-badge" class="tab-badge"></span></button>
       <button class="tab" data-tab="pages">페이지 권한</button>
       <button class="tab" data-tab="bulk">일괄 설정</button>
       <button class="tab" data-tab="settings">사이트 설정</button>
@@ -422,6 +499,28 @@
       <div class="card">
         <div class="card-title"><span class="dot"></span>등록된 사용자</div>
         <div id="user-list-wrap">
+          <div class="empty">불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 탭1.5: 사용자 신청 -->
+    <div class="tab-panel" data-panel="requests">
+
+      <div class="card">
+        <div class="card-title">
+          <span class="dot"></span>사용 신청 목록
+          <span id="req-count" style="margin-left:auto; font-family:'DM Mono',monospace; font-size:11px; font-weight:400; color:var(--text-muted);"></span>
+        </div>
+        <div class="card-desc">
+          외부에서 들어온 사용 신청을 검토하고 승인/거절합니다.<br>
+          <b>승인</b>하면 자동으로 사용자 권한 선택 화면이 뜨고 등록됩니다.
+          <b>거절</b>하면 신청이 삭제됩니다.
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button class="btn btn-sm" onclick="loadRequests()">🔄 새로고침</button>
+        </div>
+        <div id="request-list">
           <div class="empty">불러오는 중...</div>
         </div>
       </div>
@@ -583,7 +682,7 @@ import { getAuth, onAuthStateChanged, signOut as fbSignOut }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, deleteDoc, updateDoc,
-  collection, getDocs, writeBatch
+  collection, getDocs, writeBatch, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -701,6 +800,7 @@ document.querySelectorAll('.tab').forEach(t => {
     document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
     if (t.dataset.tab === 'pages') loadPages();
     if (t.dataset.tab === 'users') loadUsers();
+    if (t.dataset.tab === 'requests') loadRequests();
     if (t.dataset.tab === 'bulk') { loadPages(); loadLockStatus(); }
     if (t.dataset.tab === 'settings') loadSettings();
   });
@@ -710,6 +810,7 @@ document.querySelectorAll('.tab').forEach(t => {
 function init() {
   buildNewUserRoleSelect();
   loadUsers();
+  loadRequestCount();  // 미처리 신청 배지 표시용
   buildBulkRoleChips();
   document.getElementById('bulk-target').addEventListener('change', e => {
     document.getElementById('bulk-prefix').style.display =
@@ -1361,6 +1462,190 @@ window.restoreFromBackup = async () => {
     { okLabel: '복원', okStyle: 'primary' }
   );
 };
+
+// ============================================================
+// 사용자 신청 (accessRequests)
+// ============================================================
+let _requests = [];
+
+// 미처리 신청 개수만 빠르게 가져와서 탭 배지 표시
+async function loadRequestCount() {
+  const badge = document.getElementById('req-badge');
+  if (!badge) return;
+  try {
+    const snap = await getDocs(collection(db, 'accessRequests'));
+    const count = snap.size;
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  } catch (e) {
+    badge.classList.remove('show');
+  }
+}
+
+async function loadRequests() {
+  const wrap = document.getElementById('request-list');
+  const countEl = document.getElementById('req-count');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="empty">불러오는 중...</div>';
+
+  try {
+    // createdAt 내림차순으로 가져옴 (최신 먼저)
+    let snap;
+    try {
+      const q = query(collection(db, 'accessRequests'), orderBy('createdAt', 'desc'));
+      snap = await getDocs(q);
+    } catch (e) {
+      // orderBy 실패 시 (인덱스 없을 수 있음) 그냥 가져와서 클라이언트 정렬
+      snap = await getDocs(collection(db, 'accessRequests'));
+    }
+    _requests = [];
+    snap.forEach(d => _requests.push({ id: d.id, ...d.data() }));
+    _requests.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    if (countEl) countEl.textContent = `총 ${_requests.length}건`;
+    renderRequests();
+    loadRequestCount(); // 배지 동기화
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty">신청 목록을 불러올 수 없습니다.<br><span style="font-size:10px;">${escHtml(e.message || '')}</span></div>`;
+  }
+}
+
+function renderRequests() {
+  const wrap = document.getElementById('request-list');
+  if (!wrap) return;
+
+  if (_requests.length === 0) {
+    wrap.innerHTML = '<div class="empty">현재 처리할 사용 신청이 없습니다.</div>';
+    return;
+  }
+
+  let html = '';
+  _requests.forEach(r => {
+    const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleString('ko-KR') : '-';
+    html += `<div class="request-card" data-id="${escAttr(r.id)}">`;
+    html += `<div class="request-card-header">`;
+    html += `<div class="request-card-info">`;
+    html += `<div class="request-name">${escHtml(r.name || '(이름 없음)')}</div>`;
+    html += `<div class="request-email">${escHtml(r.email || '')}</div>`;
+    html += `<div class="request-meta">`;
+    if (r.phone) html += `<span><strong>전화:</strong> ${escHtml(r.phone)}</span>`;
+    html += `</div>`;
+    html += `</div>`;
+    html += `<div class="request-card-time">${escHtml(dateStr)}</div>`;
+    html += `</div>`;
+    if (r.message) {
+      html += `<div class="request-message">${escHtml(r.message)}</div>`;
+    }
+    html += `<div class="request-actions">`;
+    html += `<button class="btn btn-sm btn-primary" data-approve="${escAttr(r.id)}">✓ 승인</button>`;
+    html += `<button class="btn btn-sm btn-danger" data-reject="${escAttr(r.id)}">✕ 거절</button>`;
+    html += `<a class="btn btn-sm" href="mailto:${escAttr(r.email)}" target="_blank">✉ 이메일 보내기</a>`;
+    html += `</div>`;
+    html += `</div>`;
+  });
+  wrap.innerHTML = html;
+
+  // 승인 버튼
+  wrap.querySelectorAll('button[data-approve]').forEach(b => {
+    b.addEventListener('click', () => openApproveModal(b.dataset.approve));
+  });
+  // 거절 버튼
+  wrap.querySelectorAll('button[data-reject]').forEach(b => {
+    b.addEventListener('click', () => rejectRequest(b.dataset.reject));
+  });
+}
+
+// ── 승인 모달 ──────────────────────────────────────────
+function openApproveModal(requestId) {
+  const req = _requests.find(r => r.id === requestId);
+  if (!req) return;
+
+  // 정보 표시
+  const info = document.getElementById('approve-info');
+  let infoHtml = `<div><strong>이름:</strong> ${escHtml(req.name || '-')}</div>`;
+  infoHtml += `<div><strong>이메일:</strong> ${escHtml(req.email || '-')}</div>`;
+  if (req.phone) infoHtml += `<div><strong>전화:</strong> ${escHtml(req.phone)}</div>`;
+  info.innerHTML = infoHtml;
+
+  // 권한 select 채우기 (사용자 추가 폼과 동일)
+  const sel = document.getElementById('approve-role');
+  const order = ROLES.filter(r => r.id !== 'admin').concat(ROLES.filter(r => r.id === 'admin'));
+  sel.innerHTML = order.map(r => `<option value="${r.id}">${r.label}</option>`).join('');
+  sel.value = 'grade1';
+
+  // 이미 등록된 사용자인지 체크
+  const isExisting = _users.some(u => u.email === req.email);
+
+  // 승인 버튼 핸들러
+  const okBtn = document.getElementById('approve-confirm-btn');
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  newBtn.addEventListener('click', () => approveRequest(req, sel.value, isExisting));
+
+  if (isExisting) {
+    // 이미 등록된 사용자: 안내 표시
+    info.innerHTML += `<div style="color:var(--accent); margin-top:6px;">⚠️ 이미 등록된 사용자입니다. 승인 시 권한이 덮어쓰기됩니다.</div>`;
+  }
+
+  document.getElementById('approve-modal').classList.add('show');
+}
+
+window.closeApproveModal = () => {
+  document.getElementById('approve-modal').classList.remove('show');
+};
+
+async function approveRequest(req, role, isExisting) {
+  const btn = document.getElementById('approve-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+  try {
+    // 1) allowedUsers에 등록 (또는 업데이트)
+    await setDoc(doc(db, 'allowedUsers', req.email), {
+      role: role,
+      displayName: req.name || '',
+      createdAt: new Date().toISOString(),
+      ...(req.phone ? { phone: req.phone } : {})
+    }, { merge: true });
+
+    // 2) 신청 삭제
+    await deleteDoc(doc(db, 'accessRequests', req.id));
+
+    closeApproveModal();
+    toast(`${req.email} ${isExisting ? '권한 변경' : '등록'} 완료`, 'success');
+
+    // 목록 갱신
+    loadRequests();
+    loadUsers();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '승인 및 등록';
+    toast('승인 실패: ' + (e.message || e), 'error');
+  }
+}
+
+function rejectRequest(requestId) {
+  const req = _requests.find(r => r.id === requestId);
+  if (!req) return;
+
+  confirmAction(
+    '신청 거절',
+    `${req.name || req.email} 의 신청을 삭제합니다. 진행할까요?`,
+    async () => {
+      try {
+        await deleteDoc(doc(db, 'accessRequests', requestId));
+        toast('신청이 삭제되었습니다', 'success');
+        loadRequests();
+      } catch (e) {
+        toast('삭제 실패', 'error');
+      }
+    },
+    { okLabel: '거절(삭제)', okStyle: 'danger' }
+  );
+}
 
 // ============================================================
 // 사이트 설정

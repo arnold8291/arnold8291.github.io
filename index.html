@@ -135,6 +135,131 @@
     font-family: 'DM Mono', monospace; font-size: 10px;
     color: var(--text-muted); letter-spacing: 0.18em; text-transform: uppercase;
   }
+
+  /* ── 사용 신청 링크 (로그인 박스 하단) ── */
+  .request-link-wrap {
+    margin-top: 28px; padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .request-divider {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); letter-spacing: 0.05em;
+  }
+  .request-link {
+    background: none; border: none; cursor: pointer;
+    color: var(--accent); font-family: 'Noto Serif KR', serif;
+    font-size: 13px; font-weight: 600; padding: 6px 12px;
+    border-radius: 6px; transition: background 0.18s;
+  }
+  .request-link:hover { background: var(--accent-light); }
+
+  /* ── 사용 신청 모달 ── */
+  .req-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+    animation: fadeIn 0.2s ease both;
+  }
+  .req-backdrop.show { display: flex; }
+
+  .req-modal {
+    background: #fff; border-radius: 16px;
+    max-width: 440px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+    padding: 30px 28px; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: slideUp 0.25s ease both;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .req-header { text-align: center; margin-bottom: 24px; }
+  .req-header h2 {
+    font-size: 20px; font-weight: 700; color: var(--text);
+    margin-bottom: 6px; letter-spacing: -0.01em;
+  }
+  .req-header p {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); line-height: 1.6;
+  }
+
+  .req-field {
+    display: block; margin-bottom: 14px;
+  }
+  .req-label {
+    display: block; font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 0.18em;
+    color: var(--text-muted); text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .req-label em {
+    color: var(--accent); font-style: normal; margin-left: 2px;
+  }
+  .req-field input, .req-field textarea {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: 'Noto Serif KR', serif; font-size: 13px;
+    color: var(--text); background: #fff;
+    resize: vertical;
+  }
+  .req-field input:focus, .req-field textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .req-hint {
+    display: block; margin-top: 4px;
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .req-error {
+    display: none; padding: 10px 12px; margin-bottom: 12px;
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 11px; color: #dc2626;
+    line-height: 1.5;
+  }
+  .req-error.show { display: block; }
+
+  .req-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 8px;
+  }
+  .req-btn {
+    padding: 10px 18px; border-radius: 8px;
+    font-family: 'Noto Serif KR', serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.18s;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+  }
+  .req-btn-cancel:hover { border-color: var(--text-muted); }
+  .req-btn-submit {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+  .req-btn-submit:hover { background: #a07c30; border-color: #a07c30; }
+  .req-btn-submit:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+
+  /* 성공 화면 */
+  .req-success {
+    display: none; text-align: center; padding: 20px 0;
+  }
+  .req-success.show { display: block; }
+  .req-success-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff; font-size: 28px; font-weight: 700;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+    box-shadow: 0 6px 20px rgba(16,185,129,0.3);
+  }
+  .req-success h3 {
+    font-size: 18px; font-weight: 700; color: var(--text);
+    margin-bottom: 10px;
+  }
+  .req-success p {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text-muted); line-height: 1.7;
+    margin-bottom: 20px;
+  }
 </style>
 </head>
 <body>
@@ -179,6 +304,59 @@
     </button>
     <div class="login-error" id="login-error"></div>
     <div class="login-loading" id="login-loading">접속 정보 확인 중...</div>
+
+    <div class="request-link-wrap">
+      <span class="request-divider">아직 권한이 없으신가요?</span>
+      <button type="button" class="request-link" onclick="openRequestModal()">사용 신청하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 사용 신청 모달 -->
+<div id="request-modal" class="req-backdrop">
+  <div class="req-modal">
+    <div class="req-header">
+      <h2>사용 신청</h2>
+      <p>이름과 이메일을 입력하시면 관리자가 확인 후 등록해드립니다.</p>
+    </div>
+
+    <div class="req-form">
+      <label class="req-field">
+        <span class="req-label">이름 <em>*</em></span>
+        <input type="text" id="req-name" maxlength="50" placeholder="홍길동" autocomplete="name">
+      </label>
+
+      <label class="req-field">
+        <span class="req-label">전화번호</span>
+        <input type="tel" id="req-phone" maxlength="30" placeholder="010-0000-0000 (선택)" autocomplete="tel">
+      </label>
+
+      <label class="req-field">
+        <span class="req-label">이메일 <em>*</em></span>
+        <input type="email" id="req-email" maxlength="100" placeholder="example@gmail.com" autocomplete="email">
+        <span class="req-hint">Google 계정 이메일을 입력해주세요.</span>
+      </label>
+
+      <label class="req-field">
+        <span class="req-label">메모</span>
+        <textarea id="req-message" maxlength="500" rows="3" placeholder="소개나 신청 사유를 자유롭게 입력해주세요 (선택)"></textarea>
+      </label>
+
+      <div class="req-error" id="req-error"></div>
+
+      <div class="req-actions">
+        <button type="button" class="req-btn req-btn-cancel" onclick="closeRequestModal()">취소</button>
+        <button type="button" class="req-btn req-btn-submit" id="req-submit-btn" onclick="submitRequest()">신청 보내기</button>
+      </div>
+    </div>
+
+    <!-- 성공 화면 -->
+    <div class="req-success" id="req-success">
+      <div class="req-success-icon">✓</div>
+      <h3>신청이 접수되었습니다</h3>
+      <p>관리자가 확인 후 등록해드릴 예정입니다.<br>등록되면 다시 로그인해주세요.</p>
+      <button type="button" class="req-btn req-btn-submit" onclick="closeRequestModal()">확인</button>
+    </div>
   </div>
 </div>
 
@@ -191,7 +369,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc }
+import { getFirestore, doc, getDoc, addDoc, collection }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -356,6 +534,118 @@ window.signInWithGoogle = async () => {
     if (e.code !== 'auth/popup-closed-by-user') {
       showError('로그인 중 오류가 발생했습니다.');
     }
+  }
+};
+
+// ── 사용 신청 모달 ────────────────────────────────────
+const reqModal     = document.getElementById('request-modal');
+const reqForm      = document.querySelector('.req-form');
+const reqSuccess   = document.getElementById('req-success');
+const reqError     = document.getElementById('req-error');
+const reqSubmitBtn = document.getElementById('req-submit-btn');
+
+window.openRequestModal = () => {
+  reqModal.classList.add('show');
+  reqForm.style.display = '';
+  reqSuccess.classList.remove('show');
+  // 입력 초기화
+  document.getElementById('req-name').value = '';
+  document.getElementById('req-phone').value = '';
+  document.getElementById('req-email').value = '';
+  document.getElementById('req-message').value = '';
+  reqError.classList.remove('show');
+  reqSubmitBtn.disabled = false;
+  reqSubmitBtn.textContent = '신청 보내기';
+  // 첫 입력란에 포커스
+  setTimeout(() => document.getElementById('req-name').focus(), 100);
+};
+
+window.closeRequestModal = () => {
+  reqModal.classList.remove('show');
+};
+
+// 모달 백드롭 클릭 시 닫기 (모달 내부 클릭은 제외)
+reqModal.addEventListener('click', (e) => {
+  if (e.target === reqModal) closeRequestModal();
+});
+// ESC 키로 닫기
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && reqModal.classList.contains('show')) closeRequestModal();
+});
+
+// 클라이언트 단 중복 신청 방지 (브라우저 sessionStorage 활용)
+function checkRecentSubmission() {
+  try {
+    const last = sessionStorage.getItem('since2027_lastRequest');
+    if (last) {
+      const elapsed = Date.now() - parseInt(last, 10);
+      if (elapsed < 60000) { // 1분 내 재신청 방지
+        return Math.ceil((60000 - elapsed) / 1000);
+      }
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function showReqError(msg) {
+  reqError.textContent = msg;
+  reqError.classList.add('show');
+}
+
+window.submitRequest = async () => {
+  reqError.classList.remove('show');
+
+  const name    = document.getElementById('req-name').value.trim();
+  const phone   = document.getElementById('req-phone').value.trim();
+  const email   = document.getElementById('req-email').value.trim().toLowerCase();
+  const message = document.getElementById('req-message').value.trim();
+
+  // 유효성 검사
+  if (!name) {
+    showReqError('이름을 입력해주세요.');
+    return;
+  }
+  if (!email) {
+    showReqError('이메일을 입력해주세요.');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showReqError('올바른 이메일 형식이 아닙니다.');
+    return;
+  }
+
+  // 중복 신청 방지
+  const wait = checkRecentSubmission();
+  if (wait > 0) {
+    showReqError(`최근에 이미 신청하셨습니다. ${wait}초 후 다시 시도해주세요.`);
+    return;
+  }
+
+  reqSubmitBtn.disabled = true;
+  reqSubmitBtn.textContent = '전송 중...';
+
+  try {
+    const data = {
+      name: name,
+      email: email,
+      createdAt: new Date().toISOString()
+    };
+    // 선택 필드는 입력된 경우에만 추가 (Rules의 keys().hasOnly() 통과)
+    if (phone)   data.phone = phone;
+    if (message) data.message = message;
+
+    await addDoc(collection(db, 'accessRequests'), data);
+
+    // 성공
+    try { sessionStorage.setItem('since2027_lastRequest', String(Date.now())); } catch (e) {}
+    reqForm.style.display = 'none';
+    reqSuccess.classList.add('show');
+
+  } catch (e) {
+    reqSubmitBtn.disabled = false;
+    reqSubmitBtn.textContent = '신청 보내기';
+    showReqError('신청 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    console.error('신청 실패:', e);
   }
 };
 </script>
