@@ -573,18 +573,33 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && reqModal.classList.contains('show')) closeRequestModal();
 });
 
-// 클라이언트 단 중복 신청 방지 (브라우저 sessionStorage 활용)
+// 클라이언트 단 중복 신청 방지 (브라우저 localStorage 활용)
+// 1시간 = 3,600,000ms. localStorage는 브라우저 종료 후에도 유지되므로
+// sessionStorage보다 효과적인 차단이 가능.
+const REQUEST_COOLDOWN_MS = 60 * 60 * 1000; // 1시간
+
 function checkRecentSubmission() {
   try {
-    const last = sessionStorage.getItem('since2027_lastRequest');
+    const last = localStorage.getItem('since2027_lastRequest');
     if (last) {
       const elapsed = Date.now() - parseInt(last, 10);
-      if (elapsed < 60000) { // 1분 내 재신청 방지
-        return Math.ceil((60000 - elapsed) / 1000);
+      if (elapsed < REQUEST_COOLDOWN_MS) {
+        return REQUEST_COOLDOWN_MS - elapsed; // ms 단위로 반환
       }
     }
   } catch (e) {}
   return 0;
+}
+
+// ms를 사람이 읽기 쉬운 형식으로 ("45분 12초", "12초" 등)
+function formatRemainingTime(ms) {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return seconds > 0 ? `${minutes}분 ${seconds}초` : `${minutes}분`;
+  }
+  return `${seconds}초`;
 }
 
 function showReqError(msg) {
@@ -615,9 +630,9 @@ window.submitRequest = async () => {
   }
 
   // 중복 신청 방지
-  const wait = checkRecentSubmission();
-  if (wait > 0) {
-    showReqError(`최근에 이미 신청하셨습니다. ${wait}초 후 다시 시도해주세요.`);
+  const waitMs = checkRecentSubmission();
+  if (waitMs > 0) {
+    showReqError(`최근에 이미 신청하셨습니다. ${formatRemainingTime(waitMs)} 후 다시 시도해주세요.`);
     return;
   }
 
@@ -637,7 +652,7 @@ window.submitRequest = async () => {
     await addDoc(collection(db, 'accessRequests'), data);
 
     // 성공
-    try { sessionStorage.setItem('since2027_lastRequest', String(Date.now())); } catch (e) {}
+    try { localStorage.setItem('since2027_lastRequest', String(Date.now())); } catch (e) {}
     reqForm.style.display = 'none';
     reqSuccess.classList.add('show');
 
